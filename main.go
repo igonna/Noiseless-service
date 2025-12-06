@@ -7,6 +7,10 @@ import (
 )
 
 func main() {
+	if err := runMigrations(); err != nil {
+		log.Fatalf("failed to run migrations: %v", err)
+	}
+
 	app := fiber.New()
 	registerRoutes(app)
 

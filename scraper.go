@@ -12,9 +12,9 @@ import (
 )
 
 func scrapeWebsite(ctx context.Context, targetURL string) (string, error) {
-	token := strings.TrimSpace(os.Getenv("SCRAPE_DO_TOKEN"))
+	token := strings.TrimSpace(os.Getenv("SCRAPE_DO_API_KEY"))
 	if token == "" {
-		return "", errors.New("SCRAPE_DO_TOKEN is not set")
+		return "", errors.New("SCRAPE_DO_API_KEY is not set")
 	}
 
 	if _, err := url.ParseRequestURI(targetURL); err != nil {
