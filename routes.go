@@ -13,6 +13,7 @@ func registerRoutes(app *fiber.App) {
 	app.Get("/today-signals", handleTodaySignals)
 	app.Post("/signal-action", handleSignalAction)
 	app.Post("/scrape", handleScrape)
+	app.Post("/v1/user/profile/update", handleProfileUpdate)
 }
 
 func handleSignalDefinition(c *fiber.Ctx) error {

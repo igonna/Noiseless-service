@@ -7,6 +7,8 @@ import (
 )
 
 func main() {
+	loadEnvFile()
+
 	if err := runMigrations(); err != nil {
 		log.Fatalf("failed to run migrations: %v", err)
 	}
