@@ -31,11 +31,6 @@ type scrapeResponse struct {
 	Body string `json:"body"`
 }
 
-type profileUpdateRequest struct {
-	DisplayName *string `json:"display_name"`
-	Bio         *string `json:"bio"`
-}
-
 type profileWebsitesRequest struct {
 	Profile string `json:"profile"`
 }

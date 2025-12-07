@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -9,57 +10,42 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+const profileUpsertSQL = `
+INSERT INTO profiles (id, profile)
+VALUES ($1, $2)
+ON CONFLICT (id) DO UPDATE SET
+	profile = excluded.profile
+RETURNING id, profile;
+`
+
 func handleProfileUpdate(c *fiber.Ctx) error {
-	user, err := authenticateSupabaseRequest(c)
+	claims, err := supabaseClaimsFromCtx(c)
 	if err != nil {
 		return err
 	}
 
-	var req profileUpdateRequest
-	if err := c.BodyParser(&req); err != nil {
+	var payload map[string]interface{}
+	if err := c.BodyParser(&payload); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid JSON payload")
 	}
 
-	updates := map[string]interface{}{
-		"id":         user.ID,
-		"updated_at": time.Now().UTC().Format(time.RFC3339Nano),
-	}
-	if user.Email != "" {
-		updates["email"] = user.Email
+	if len(payload) == 0 {
+		return fiber.NewError(fiber.StatusBadRequest, "profile payload cannot be empty")
 	}
 
-	provided := false
-	if req.DisplayName != nil {
-		updates["display_name"] = strings.TrimSpace(*req.DisplayName)
-		provided = true
-	}
-	if req.Bio != nil {
-		updates["bio"] = strings.TrimSpace(*req.Bio)
-		provided = true
-	}
-	if !provided {
-		return fiber.NewError(fiber.StatusBadRequest, "provide at least one field to update")
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-	client, err := getSupabaseClient()
+	record, err := upsertProfileRecord(ctx, claims.Subject, payload)
 	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("profile upsert failed: %v", err))
 	}
 
-	var saved map[string]interface{}
-	_, err = client.From("profiles").
-		Upsert(updates, "id", "representation", "").
-		Single().
-		ExecuteTo(&saved)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadGateway, fmt.Sprintf("supabase upsert failed: %v", err))
-	}
-
-	return c.JSON(fiber.Map{"profile": saved})
+	return c.JSON(fiber.Map{"profile": record})
 }
 
 func handleProfileWebsites(c *fiber.Ctx) error {
-	if _, err := authenticateSupabaseRequest(c); err != nil {
+	if _, err := supabaseClaimsFromCtx(c); err != nil {
 		return err
 	}
 
@@ -82,4 +68,48 @@ func handleProfileWebsites(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(result)
+}
+
+func supabaseClaimsFromCtx(c *fiber.Ctx) (*SupabaseClaims, error) {
+	raw := c.Locals("claims")
+	claims, ok := raw.(*SupabaseClaims)
+	if !ok || claims == nil {
+		return nil, fiber.NewError(fiber.StatusUnauthorized, "missing Supabase claims")
+	}
+	if claims.Subject == "" {
+		return nil, fiber.NewError(fiber.StatusUnauthorized, "token missing subject")
+	}
+	return claims, nil
+}
+
+type profileRecord struct {
+	ID      string                 `json:"id"`
+	Profile map[string]interface{} `json:"profile"`
+}
+
+func upsertProfileRecord(ctx context.Context, userID string, profile map[string]interface{}) (profileRecord, error) {
+	db, err := getDB()
+	if err != nil {
+		return profileRecord{}, err
+	}
+
+	profileJSON, err := json.Marshal(profile)
+	if err != nil {
+		return profileRecord{}, err
+	}
+
+	row := db.QueryRowContext(ctx, profileUpsertSQL, userID, profileJSON)
+
+	var record profileRecord
+	var raw json.RawMessage
+
+	if err := row.Scan(&record.ID, &raw); err != nil {
+		return profileRecord{}, err
+	}
+
+	if err := json.Unmarshal(raw, &record.Profile); err != nil {
+		return profileRecord{}, err
+	}
+
+	return record, nil
 }

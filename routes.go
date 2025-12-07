@@ -9,12 +9,16 @@ import (
 )
 
 func registerRoutes(app *fiber.App) {
+	app.Get("/health", func(c *fiber.Ctx) error {
+		return c.SendString("ok")
+	})
 	app.Get("/signal", handleSignalDefinition)
 	app.Get("/today-signals", handleTodaySignals)
 	app.Post("/signal-action", handleSignalAction)
 	app.Post("/scrape", handleScrape)
-	app.Post("/v1/user/profile/update", handleProfileUpdate)
-	app.Post("/v1/user/profile/websites", handleProfileWebsites)
+	v1User := app.Group("/v1/user", SupabaseAuth())
+	v1User.Post("/profile/update", handleProfileUpdate)
+	v1User.Post("/profile/websites", handleProfileWebsites)
 }
 
 func handleSignalDefinition(c *fiber.Ctx) error {
