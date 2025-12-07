@@ -35,3 +35,17 @@ type profileUpdateRequest struct {
 	DisplayName *string `json:"display_name"`
 	Bio         *string `json:"bio"`
 }
+
+type profileWebsitesRequest struct {
+	Profile string `json:"profile"`
+}
+
+type websiteResource struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
+	Why  string `json:"why,omitempty"`
+}
+
+type profileWebsitesResponse struct {
+	Websites []websiteResource `json:"websites"`
+}

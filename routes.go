@@ -14,6 +14,7 @@ func registerRoutes(app *fiber.App) {
 	app.Post("/signal-action", handleSignalAction)
 	app.Post("/scrape", handleScrape)
 	app.Post("/v1/user/profile/update", handleProfileUpdate)
+	app.Post("/v1/user/profile/websites", handleProfileWebsites)
 }
 
 func handleSignalDefinition(c *fiber.Ctx) error {

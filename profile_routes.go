@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -55,4 +56,30 @@ func handleProfileUpdate(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{"profile": saved})
+}
+
+func handleProfileWebsites(c *fiber.Ctx) error {
+	if _, err := authenticateSupabaseRequest(c); err != nil {
+		return err
+	}
+
+	var req profileWebsitesRequest
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid JSON payload")
+	}
+
+	profile := strings.TrimSpace(req.Profile)
+	if profile == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "profile is required")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+
+	result, err := fetchProfileWebsites(ctx, profile)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadGateway, err.Error())
+	}
+
+	return c.JSON(result)
 }

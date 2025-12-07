@@ -26,6 +26,7 @@ go.work.sum
 
 # env file
 .env
+supabase/signing_keys.json
 
 # Editor/IDE
 # .idea/
