@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -16,6 +18,12 @@ VALUES ($1, $2)
 ON CONFLICT (id) DO UPDATE SET
 	profile = excluded.profile
 RETURNING id, profile;
+`
+
+const profileSelectSQL = `
+SELECT id, profile
+FROM profiles
+WHERE id = $1;
 `
 
 func handleProfileUpdate(c *fiber.Ctx) error {
@@ -70,6 +78,26 @@ func handleProfileWebsites(c *fiber.Ctx) error {
 	return c.JSON(result)
 }
 
+func handleProfileGet(c *fiber.Ctx) error {
+	claims, err := supabaseClaimsFromCtx(c)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	record, err := fetchProfileRecord(ctx, claims.Subject)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fiber.NewError(fiber.StatusNotFound, "profile not found")
+		}
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(fiber.Map{"profile": record})
+}
+
 func supabaseClaimsFromCtx(c *fiber.Ctx) (*SupabaseClaims, error) {
 	raw := c.Locals("claims")
 	claims, ok := raw.(*SupabaseClaims)
@@ -111,5 +139,24 @@ func upsertProfileRecord(ctx context.Context, userID string, profile map[string]
 		return profileRecord{}, err
 	}
 
+	return record, nil
+}
+
+func fetchProfileRecord(ctx context.Context, userID string) (profileRecord, error) {
+	db, err := getDB()
+	if err != nil {
+		return profileRecord{}, err
+	}
+
+	row := db.QueryRowContext(ctx, profileSelectSQL, userID)
+	var record profileRecord
+	var raw json.RawMessage
+
+	if err := row.Scan(&record.ID, &raw); err != nil {
+		return profileRecord{}, err
+	}
+	if err := json.Unmarshal(raw, &record.Profile); err != nil {
+		return profileRecord{}, err
+	}
 	return record, nil
 }
