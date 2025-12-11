@@ -101,6 +101,7 @@ func SupabaseAuth() fiber.Handler {
 		}
 
 		c.Locals("claims", claims)
+		c.Locals(userIDContextKey, claims.Subject)
 		return c.Next()
 	}
 }

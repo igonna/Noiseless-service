@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/user/Noiseless-service/models"
 )
 
 const (
@@ -17,10 +19,10 @@ const (
 	openAIModel    = "gpt-5-mini-2025-08-07"
 )
 
-func fetchProfileWebsites(ctx context.Context, profile string) (profileWebsitesResponse, error) {
+func fetchProfileWebsites(ctx context.Context, profile string) (models.ProfileWebsitesResponse, error) {
 	apiKey := strings.TrimSpace(os.Getenv("OPENAI_API_KEY"))
 	if apiKey == "" {
-		return profileWebsitesResponse{}, errors.New("OPENAI_API_KEY is not set")
+		return models.ProfileWebsitesResponse{}, errors.New("OPENAI_API_KEY is not set")
 	}
 
 	prompt := fmt.Sprintf("Generate 10-20 high-quality, high-signal websites where someone with this profile learns, reads news, or follows trends. Include: blogs, forums, curated lists, newsletters, portals, niche communities. Profile description:%s\nRespond ONLY as compact JSON matching {\\\"websites\\\":[{\\\"name\\\":\\\"...\\\",\\\"url\\\":\\\"https://...\\\",\\\"why\\\":\\\"...\\\"}]} with at least 10 and at most 20 items. Provide canonical URLs and concise rationales. No markdown, no prose outside the JSON.", formatProfileForPrompt(profile))
@@ -35,34 +37,34 @@ func fetchProfileWebsites(ctx context.Context, profile string) (profileWebsitesR
 
 	payload, err := json.Marshal(reqBody)
 	if err != nil {
-		return profileWebsitesResponse{}, err
+		return models.ProfileWebsitesResponse{}, err
 	}
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, openAIEndpoint, bytes.NewReader(payload))
 	if err != nil {
-		return profileWebsitesResponse{}, err
+		return models.ProfileWebsitesResponse{}, err
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+apiKey)
 
 	resp, err := httpClient.Do(httpReq)
 	if err != nil {
-		return profileWebsitesResponse{}, err
+		return models.ProfileWebsitesResponse{}, err
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return profileWebsitesResponse{}, err
+		return models.ProfileWebsitesResponse{}, err
 	}
 
 	if resp.StatusCode >= 300 {
-		return profileWebsitesResponse{}, fmt.Errorf("openai request failed (%s): %s", resp.Status, strings.TrimSpace(string(body)))
+		return models.ProfileWebsitesResponse{}, fmt.Errorf("openai request failed (%s): %s", resp.Status, strings.TrimSpace(string(body)))
 	}
 
 	parsed, err := parseWebsitesPayload(parseOpenAIText(body))
 	if err != nil {
-		return profileWebsitesResponse{}, err
+		return models.ProfileWebsitesResponse{}, err
 	}
 
 	return parsed, nil
@@ -76,17 +78,17 @@ func formatProfileForPrompt(profile string) string {
 	return "\n" + trimmed
 }
 
-func parseWebsitesPayload(raw string) (profileWebsitesResponse, error) {
-	var target profileWebsitesResponse
+func parseWebsitesPayload(raw string) (models.ProfileWebsitesResponse, error) {
+	var target models.ProfileWebsitesResponse
 	if err := json.Unmarshal([]byte(raw), &target); err != nil {
-		var alt []websiteResource
+		var alt []models.WebsiteResource
 		if err := json.Unmarshal([]byte(raw), &alt); err != nil {
-			return profileWebsitesResponse{}, fmt.Errorf("unable to parse OpenAI response: %w", err)
+			return models.ProfileWebsitesResponse{}, fmt.Errorf("unable to parse OpenAI response: %w", err)
 		}
 		target.Websites = alt
 	}
 
-	clean := make([]websiteResource, 0, len(target.Websites))
+	clean := make([]models.WebsiteResource, 0, len(target.Websites))
 	for _, w := range target.Websites {
 		w.Name = strings.TrimSpace(w.Name)
 		w.URL = strings.TrimSpace(w.URL)
@@ -105,10 +107,10 @@ func parseWebsitesPayload(raw string) (profileWebsitesResponse, error) {
 		clean = append(clean, w)
 	}
 	if len(clean) == 0 {
-		return profileWebsitesResponse{}, errors.New("OpenAI response did not include any websites")
+		return models.ProfileWebsitesResponse{}, errors.New("OpenAI response did not include any websites")
 	}
 
-	return profileWebsitesResponse{Websites: clean}, nil
+	return models.ProfileWebsitesResponse{Websites: clean}, nil
 }
 
 func parseOpenAIText(body []byte) string {

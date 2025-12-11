@@ -2,13 +2,9 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
-	"errors"
-	"fmt"
-	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/user/Noiseless-service/models"
 )
 
 const profileUpsertSQL = `
@@ -25,111 +21,48 @@ FROM profiles
 WHERE id = $1;
 `
 
-func handleProfileUpdate(c *fiber.Ctx) error {
-	claims, err := supabaseClaimsFromCtx(c)
-	if err != nil {
-		return err
-	}
-
-	var payload map[string]interface{}
-	if err := c.BodyParser(&payload); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid JSON payload")
-	}
-
-	if len(payload) == 0 {
-		return fiber.NewError(fiber.StatusBadRequest, "profile payload cannot be empty")
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	record, err := upsertProfileRecord(ctx, claims.Subject, payload)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("profile upsert failed: %v", err))
-	}
-
-	return c.JSON(fiber.Map{"profile": record})
-}
-
-func handleProfileGet(c *fiber.Ctx) error {
-	claims, err := supabaseClaimsFromCtx(c)
-	if err != nil {
-		return err
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	record, err := fetchProfileRecord(ctx, claims.Subject)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, "profile not found")
-		}
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
-	}
-
-	return c.JSON(fiber.Map{"profile": record})
-}
-
-func supabaseClaimsFromCtx(c *fiber.Ctx) (*SupabaseClaims, error) {
-	raw := c.Locals("claims")
-	claims, ok := raw.(*SupabaseClaims)
-	if !ok || claims == nil {
-		return nil, fiber.NewError(fiber.StatusUnauthorized, "missing Supabase claims")
-	}
-	if claims.Subject == "" {
-		return nil, fiber.NewError(fiber.StatusUnauthorized, "token missing subject")
-	}
-	return claims, nil
-}
-
-type profileRecord struct {
-	ID      string                 `json:"id"`
-	Profile map[string]interface{} `json:"profile"`
-}
-
-func upsertProfileRecord(ctx context.Context, userID string, profile map[string]interface{}) (profileRecord, error) {
+func upsertProfileRecord(ctx context.Context, userID string, profile map[string]interface{}) (models.ProfileRecord, error) {
 	db, err := getDB()
 	if err != nil {
-		return profileRecord{}, err
+		return models.ProfileRecord{}, err
 	}
 
 	profileJSON, err := json.Marshal(profile)
 	if err != nil {
-		return profileRecord{}, err
+		return models.ProfileRecord{}, err
 	}
 
 	row := db.QueryRowContext(ctx, profileUpsertSQL, userID, profileJSON)
 
-	var record profileRecord
+	var record models.ProfileRecord
 	var raw json.RawMessage
 
 	if err := row.Scan(&record.ID, &raw); err != nil {
-		return profileRecord{}, err
+		return models.ProfileRecord{}, err
 	}
 
 	if err := json.Unmarshal(raw, &record.Profile); err != nil {
-		return profileRecord{}, err
+		return models.ProfileRecord{}, err
 	}
 
 	return record, nil
 }
 
-func fetchProfileRecord(ctx context.Context, userID string) (profileRecord, error) {
+func fetchProfileRecord(ctx context.Context, userID string) (models.ProfileRecord, error) {
 	db, err := getDB()
 	if err != nil {
-		return profileRecord{}, err
+		return models.ProfileRecord{}, err
 	}
 
 	row := db.QueryRowContext(ctx, profileSelectSQL, userID)
-	var record profileRecord
+	var record models.ProfileRecord
 	var raw json.RawMessage
 
 	if err := row.Scan(&record.ID, &raw); err != nil {
-		return profileRecord{}, err
+		return models.ProfileRecord{}, err
 	}
 	if err := json.Unmarshal(raw, &record.Profile); err != nil {
-		return profileRecord{}, err
+		return models.ProfileRecord{}, err
 	}
 	return record, nil
 }
