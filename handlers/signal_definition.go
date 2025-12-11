@@ -5,7 +5,7 @@ import (
 	"github.com/user/Noiseless-service/models"
 )
 
-func (h *Handlers) SignalDefinition(c *fiber.Ctx) error {
+func SignalDefinition(c *fiber.Ctx) error {
 	return c.JSON(models.ExplanationResponse{
 		Topic:      "Signal",
 		Definition: "In operating systems, a signal is an asynchronous notification sent to a process or thread to notify it of events such as interrupts, termination requests, or exceptional conditions.",

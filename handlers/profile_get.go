@@ -3,14 +3,16 @@ package handlers
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/user/Noiseless-service/models"
 )
 
-func (h *Handlers) ProfileGet(c *fiber.Ctx) error {
-	userID, err := h.deps.UserIDProvider(c)
+func ProfileGet(c *fiber.Ctx) error {
+	userID, err := requireUserID(c)
 	if err != nil {
 		return err
 	}
@@ -18,7 +20,7 @@ func (h *Handlers) ProfileGet(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	record, err := h.deps.FetchProfile(ctx, userID)
+	record, err := fetchProfileRecord(ctx, userID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return fiber.NewError(fiber.StatusNotFound, "profile not found")
@@ -27,4 +29,29 @@ func (h *Handlers) ProfileGet(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{"profile": record})
+}
+
+func fetchProfileRecord(ctx context.Context, userID string) (models.ProfileRecord, error) {
+	db, err := requireDB()
+	if err != nil {
+		return models.ProfileRecord{}, err
+	}
+
+	const profileSelectSQL = `
+SELECT id, profile
+FROM profiles
+WHERE id = $1;
+`
+
+	row := db.QueryRowContext(ctx, profileSelectSQL, userID)
+	var record models.ProfileRecord
+	var raw json.RawMessage
+
+	if err := row.Scan(&record.ID, &raw); err != nil {
+		return models.ProfileRecord{}, err
+	}
+	if err := json.Unmarshal(raw, &record.Profile); err != nil {
+		return models.ProfileRecord{}, err
+	}
+	return record, nil
 }

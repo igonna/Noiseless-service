@@ -1,0 +1,32 @@
+package handlers
+
+import (
+	"database/sql"
+	"errors"
+	"net/http"
+
+	"github.com/gofiber/fiber/v2"
+)
+
+var (
+	// GetDB should be assigned by main so handlers can reuse the shared *sql.DB pool.
+	GetDB func() (*sql.DB, error)
+	// UserIDFromCtx extracts the authenticated user ID from the Fiber context.
+	UserIDFromCtx func(*fiber.Ctx) (string, error)
+	// HTTPClient is used by handlers that need outbound HTTP calls (e.g., scraping).
+	HTTPClient *http.Client = http.DefaultClient
+)
+
+func requireDB() (*sql.DB, error) {
+	if GetDB == nil {
+		return nil, errors.New("handlers: GetDB is not configured")
+	}
+	return GetDB()
+}
+
+func requireUserID(c *fiber.Ctx) (string, error) {
+	if UserIDFromCtx == nil {
+		return "", fiber.NewError(fiber.StatusInternalServerError, "handlers: user context helper not configured")
+	}
+	return UserIDFromCtx(c)
+}
