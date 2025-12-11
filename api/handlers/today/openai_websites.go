@@ -1,4 +1,4 @@
-package handlers
+package today
 
 import (
 	"context"
@@ -7,13 +7,14 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/user/Noiseless-service/api/handlers"
 	"github.com/user/Noiseless-service/models"
 )
 
 const openAIModel = "gpt-5-mini-2025-08-07"
 
 func fetchProfileWebsites(ctx context.Context, profile string) (models.ProfileWebsitesResponse, error) {
-	client, err := requireOpenAIClient()
+	client, err := handlers.RequireOpenAIClient()
 	if err != nil {
 		return models.ProfileWebsitesResponse{}, err
 	}

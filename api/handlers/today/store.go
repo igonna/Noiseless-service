@@ -1,4 +1,4 @@
-package handlers
+package today
 
 import (
 	"bytes"
@@ -11,38 +11,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/user/Noiseless-service/api/handlers"
 	"github.com/user/Noiseless-service/models"
 )
 
-var errProfileNotFound = errors.New("profile not found")
-
-func TodaySignals(c *fiber.Ctx) error {
-	userID, err := requireUserID(c)
-	if err != nil {
-		return err
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	websitesResp, refreshed, err := ensureWebsitesSynced(ctx, userID)
-	if err != nil {
-		if errors.Is(err, errProfileNotFound) {
-			return fiber.NewError(fiber.StatusNotFound, err.Error())
-		}
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
-	}
-
-	return c.JSON(fiber.Map{
-		"signals":            []models.Signal{},
-		"websites":           websitesResp.Websites,
-		"websites_refreshed": refreshed,
-	})
-}
-
 func ensureWebsitesSynced(ctx context.Context, userID string) (models.ProfileWebsitesResponse, bool, error) {
-	db, err := requireDB()
+	db, err := handlers.RequireDB()
 	if err != nil {
 		return models.ProfileWebsitesResponse{}, false, err
 	}

@@ -11,7 +11,7 @@ import (
 )
 
 func ProfileUpdate(c *fiber.Ctx) error {
-	userID, err := requireUserID(c)
+	userID, err := RequireUserID(c)
 	if err != nil {
 		return err
 	}
@@ -37,7 +37,7 @@ func ProfileUpdate(c *fiber.Ctx) error {
 }
 
 func upsertProfileRecord(ctx context.Context, userID string, profile map[string]interface{}) (models.ProfileRecord, error) {
-	db, err := requireDB()
+	db, err := RequireDB()
 	if err != nil {
 		return models.ProfileRecord{}, err
 	}

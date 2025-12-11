@@ -1,4 +1,4 @@
-package handlers
+package scraper
 
 import (
 	"context"
@@ -9,35 +9,14 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"time"
-
-	"github.com/gofiber/fiber/v2"
-	"github.com/user/Noiseless-service/models"
 )
 
-func Scrape(c *fiber.Ctx) error {
-	var req models.ScrapeRequest
-	if err := c.BodyParser(&req); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid JSON payload")
+// Scrape fetches the rendered HTML for a URL via scrape.do.
+func Scrape(ctx context.Context, client *http.Client, targetURL string) (string, error) {
+	if client == nil {
+		client = http.DefaultClient
 	}
 
-	target := strings.TrimSpace(req.URL)
-	if target == "" {
-		return fiber.NewError(fiber.StatusBadRequest, "url is required")
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
-
-	body, err := scrapeWebsite(ctx, target)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadGateway, err.Error())
-	}
-
-	return c.JSON(models.ScrapeResponse{Body: body})
-}
-
-func scrapeWebsite(ctx context.Context, targetURL string) (string, error) {
 	token := strings.TrimSpace(os.Getenv("SCRAPE_DO_TOKEN"))
 	if token == "" {
 		token = strings.TrimSpace(os.Getenv("SCRAPE_DO_API_KEY"))
@@ -56,11 +35,6 @@ func scrapeWebsite(ctx context.Context, targetURL string) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
 		return "", err
-	}
-
-	client := HTTPClient
-	if client == nil {
-		client = http.DefaultClient
 	}
 
 	resp, err := client.Do(req)

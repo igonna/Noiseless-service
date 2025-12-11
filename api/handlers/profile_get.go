@@ -12,7 +12,7 @@ import (
 )
 
 func ProfileGet(c *fiber.Ctx) error {
-	userID, err := requireUserID(c)
+	userID, err := RequireUserID(c)
 	if err != nil {
 		return err
 	}
@@ -32,7 +32,7 @@ func ProfileGet(c *fiber.Ctx) error {
 }
 
 func fetchProfileRecord(ctx context.Context, userID string) (models.ProfileRecord, error) {
-	db, err := requireDB()
+	db, err := RequireDB()
 	if err != nil {
 		return models.ProfileRecord{}, err
 	}

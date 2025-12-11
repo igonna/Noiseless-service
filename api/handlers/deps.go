@@ -20,21 +20,21 @@ var (
 	OpenAIClient *openai.Client
 )
 
-func requireDB() (*sql.DB, error) {
+func RequireDB() (*sql.DB, error) {
 	if GetDB == nil {
 		return nil, errors.New("handlers: GetDB is not configured")
 	}
 	return GetDB()
 }
 
-func requireUserID(c *fiber.Ctx) (string, error) {
+func RequireUserID(c *fiber.Ctx) (string, error) {
 	if UserIDFromCtx == nil {
 		return "", fiber.NewError(fiber.StatusInternalServerError, "handlers: user context helper not configured")
 	}
 	return UserIDFromCtx(c)
 }
 
-func requireOpenAIClient() (*openai.Client, error) {
+func RequireOpenAIClient() (*openai.Client, error) {
 	if OpenAIClient == nil {
 		return nil, errors.New("handlers: OpenAI client not configured")
 	}
