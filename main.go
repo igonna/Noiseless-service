@@ -24,7 +24,7 @@ func main() {
 	handlers.GetDB = db.Get
 	handlers.UserIDFromCtx = api.UserIDFromCtx
 	handlers.HTTPClient = httpClient
-	handlers.OpenAIClient = openai.NewClient(httpClient)
+	handlers.OpenAIClient = openai.NewClient(openaiHTTPClient)
 
 	app := fiber.New()
 	app.Use(logger.New())

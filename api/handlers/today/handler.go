@@ -12,6 +12,8 @@ import (
 
 var errProfileNotFound = errors.New("profile not found")
 
+const todayHandlerTimeout = 45 * time.Second
+
 // Handle processes GET /v1/signal/today requests.
 func Handle(c *fiber.Ctx) error {
 	userID, err := handlers.RequireUserID(c)
@@ -19,10 +21,10 @@ func Handle(c *fiber.Ctx) error {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), todayHandlerTimeout)
 	defer cancel()
 
-	websitesResp, refreshed, err := ensureWebsitesSynced(ctx, userID)
+	websitesResp, err := ensureWebsitesSynced(ctx, userID)
 	if err != nil {
 		if errors.Is(err, errProfileNotFound) {
 			return fiber.NewError(fiber.StatusNotFound, err.Error())
@@ -31,8 +33,7 @@ func Handle(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{
-		"signals":            []models.Signal{},
-		"websites":           websitesResp.Websites,
-		"websites_refreshed": refreshed,
+		"signals":  []models.Signal{},
+		"websites": websitesResp.Websites,
 	})
 }

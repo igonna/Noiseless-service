@@ -13,23 +13,23 @@ import (
 	"github.com/user/Noiseless-service/models"
 )
 
-func ensureWebsitesSynced(ctx context.Context, userID string) (models.ProfileWebsitesResponse, bool, error) {
+func ensureWebsitesSynced(ctx context.Context, userID string) (models.ProfileWebsitesResponse, error) {
 	db, err := handlers.RequireDB()
 	if err != nil {
-		return models.ProfileWebsitesResponse{}, false, err
+		return models.ProfileWebsitesResponse{}, err
 	}
 
 	profile, err := fetchProfileSnapshot(ctx, db, userID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return models.ProfileWebsitesResponse{}, false, errProfileNotFound
+			return models.ProfileWebsitesResponse{}, errProfileNotFound
 		}
-		return models.ProfileWebsitesResponse{}, false, err
+		return models.ProfileWebsitesResponse{}, err
 	}
 
 	websitesSnap, found, err := fetchWebsitesSnapshot(ctx, db, userID)
 	if err != nil {
-		return models.ProfileWebsitesResponse{}, false, err
+		return models.ProfileWebsitesResponse{}, err
 	}
 
 	needsRefresh := !found || !websitesSnap.UpdatedAt.Valid || !websitesSnap.UpdatedAt.Time.Equal(profile.UpdatedAt)
@@ -38,16 +38,16 @@ func ensureWebsitesSynced(ctx context.Context, userID string) (models.ProfileWeb
 	if needsRefresh {
 		resp, err = fetchProfileWebsites(ctx, string(profile.Profile))
 		if err != nil {
-			return models.ProfileWebsitesResponse{}, false, err
+			return models.ProfileWebsitesResponse{}, err
 		}
 
 		buf, err := json.Marshal(resp)
 		if err != nil {
-			return models.ProfileWebsitesResponse{}, false, err
+			return models.ProfileWebsitesResponse{}, err
 		}
 
 		if err := saveWebsitesSnapshot(ctx, db, userID, buf, profile.UpdatedAt); err != nil {
-			return models.ProfileWebsitesResponse{}, false, err
+			return models.ProfileWebsitesResponse{}, err
 		}
 
 		websitesSnap = websiteSnapshot{
@@ -58,11 +58,11 @@ func ensureWebsitesSynced(ctx context.Context, userID string) (models.ProfileWeb
 	} else {
 		resp, err = decodeWebsitesPayload(websitesSnap.Websites)
 		if err != nil {
-			return models.ProfileWebsitesResponse{}, false, err
+			return models.ProfileWebsitesResponse{}, err
 		}
 	}
 
-	return resp, needsRefresh, nil
+	return resp, nil
 }
 
 const (
