@@ -1,4 +1,4 @@
-package main
+package db
 
 import (
 	"database/sql"
@@ -16,8 +16,8 @@ var (
 	dbErr  error
 )
 
-// initAppDB lazily opens a shared *sql.DB using DATABASE_URL.
-func initAppDB() (*sql.DB, error) {
+// Init lazily opens a shared *sql.DB using DATABASE_URL.
+func Init() (*sql.DB, error) {
 	dbOnce.Do(func() {
 		dsn := strings.TrimSpace(os.Getenv("DATABASE_URL"))
 		if dsn == "" {
@@ -43,6 +43,6 @@ func initAppDB() (*sql.DB, error) {
 	return appDB, dbErr
 }
 
-func getDB() (*sql.DB, error) {
-	return initAppDB()
+func Get() (*sql.DB, error) {
+	return Init()
 }

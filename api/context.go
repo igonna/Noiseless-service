@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"strings"
@@ -8,7 +8,7 @@ import (
 
 const userIDContextKey = "user_id"
 
-func userIDFromCtx(c *fiber.Ctx) (string, error) {
+func UserIDFromCtx(c *fiber.Ctx) (string, error) {
 	raw := c.Locals(userIDContextKey)
 	if raw == nil {
 		return "", fiber.NewError(fiber.StatusUnauthorized, "missing Supabase user context")

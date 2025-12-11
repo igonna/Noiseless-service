@@ -1,11 +1,11 @@
-package main
+package api
 
 import (
 	"github.com/gofiber/fiber/v2"
-	"github.com/user/Noiseless-service/handlers"
+	"github.com/user/Noiseless-service/api/handlers"
 )
 
-func registerRoutes(app *fiber.App) {
+func RegisterRoutes(app *fiber.App) {
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.SendString("ok")
 	})

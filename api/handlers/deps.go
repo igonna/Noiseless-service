@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/user/Noiseless-service/internal/openai"
 )
 
 var (
@@ -15,6 +16,8 @@ var (
 	UserIDFromCtx func(*fiber.Ctx) (string, error)
 	// HTTPClient is used by handlers that need outbound HTTP calls (e.g., scraping).
 	HTTPClient *http.Client = http.DefaultClient
+	// OpenAIClient provides access to the shared OpenAI caller.
+	OpenAIClient *openai.Client
 )
 
 func requireDB() (*sql.DB, error) {
@@ -29,4 +32,11 @@ func requireUserID(c *fiber.Ctx) (string, error) {
 		return "", fiber.NewError(fiber.StatusInternalServerError, "handlers: user context helper not configured")
 	}
 	return UserIDFromCtx(c)
+}
+
+func requireOpenAIClient() (*openai.Client, error) {
+	if OpenAIClient == nil {
+		return nil, errors.New("handlers: OpenAI client not configured")
+	}
+	return OpenAIClient, nil
 }
