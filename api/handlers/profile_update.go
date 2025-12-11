@@ -47,11 +47,12 @@ func upsertProfileRecord(ctx context.Context, userID string, profile map[string]
 		return models.ProfileRecord{}, err
 	}
 
-	const profileUpsertSQL = `
-INSERT INTO profiles (user_id, profile)
-VALUES ($1, $2)
+const profileUpsertSQL = `
+INSERT INTO profiles (user_id, profile, updated_at)
+VALUES ($1, $2, now())
 ON CONFLICT (user_id) DO UPDATE SET
-	profile = excluded.profile
+	profile = excluded.profile,
+	updated_at = now()
 RETURNING user_id, profile;
 `
 
