@@ -3,9 +3,7 @@ package today
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"database/sql"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -36,9 +34,14 @@ func ensureWebsitesSynced(ctx context.Context, userID string) (models.ProfileWeb
 
 	needsRefresh := !found || !websitesSnap.UpdatedAt.Valid || !websitesSnap.UpdatedAt.Time.Equal(profile.UpdatedAt)
 
+	var resp models.ProfileWebsitesResponse
 	if needsRefresh {
-		payload := buildPlaceholderWebsites(profile.Profile)
-		buf, err := json.Marshal(payload)
+		resp, err = fetchProfileWebsites(ctx, string(profile.Profile))
+		if err != nil {
+			return models.ProfileWebsitesResponse{}, false, err
+		}
+
+		buf, err := json.Marshal(resp)
 		if err != nil {
 			return models.ProfileWebsitesResponse{}, false, err
 		}
@@ -52,14 +55,14 @@ func ensureWebsitesSynced(ctx context.Context, userID string) (models.ProfileWeb
 			Websites:  buf,
 			UpdatedAt: sql.NullTime{Time: profile.UpdatedAt, Valid: true},
 		}
+	} else {
+		resp, err = decodeWebsitesPayload(websitesSnap.Websites)
+		if err != nil {
+			return models.ProfileWebsitesResponse{}, false, err
+		}
 	}
 
-	parsed, err := decodeWebsitesPayload(websitesSnap.Websites)
-	if err != nil {
-		return models.ProfileWebsitesResponse{}, false, err
-	}
-
-	return parsed, needsRefresh, nil
+	return resp, needsRefresh, nil
 }
 
 const (
@@ -141,20 +144,6 @@ func decodeWebsitesPayload(raw []byte) (models.ProfileWebsitesResponse, error) {
 	}
 
 	return models.ProfileWebsitesResponse{}, fmt.Errorf("unable to decode websites payload")
-}
-
-func buildPlaceholderWebsites(profile json.RawMessage) models.ProfileWebsitesResponse {
-	sum := sha256.Sum256(profile)
-	hash := hex.EncodeToString(sum[:])
-	domain := fmt.Sprintf("%s.com", hash)
-
-	resource := models.WebsiteResource{
-		Name: hash,
-		URL:  "https://" + domain,
-		Why:  "Auto-generated placeholder derived from profile hash",
-	}
-
-	return models.ProfileWebsitesResponse{Websites: []models.WebsiteResource{resource}}
 }
 
 type profileSnapshot struct {

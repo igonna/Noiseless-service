@@ -28,7 +28,7 @@ func ProfileGet(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	return c.JSON(fiber.Map{"profile": record})
+	return c.JSON(record.Profile)
 }
 
 func fetchProfileRecord(ctx context.Context, userID string) (models.ProfileRecord, error) {
@@ -38,9 +38,9 @@ func fetchProfileRecord(ctx context.Context, userID string) (models.ProfileRecor
 	}
 
 	const profileSelectSQL = `
-SELECT id, profile
+SELECT user_id, profile
 FROM profiles
-WHERE id = $1;
+WHERE user_id = $1;
 `
 
 	row := db.QueryRowContext(ctx, profileSelectSQL, userID)

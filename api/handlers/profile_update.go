@@ -28,12 +28,12 @@ func ProfileUpdate(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	record, err := upsertProfileRecord(ctx, userID, payload)
+	_, err = upsertProfileRecord(ctx, userID, payload)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("profile upsert failed: %v", err))
 	}
 
-	return c.JSON(fiber.Map{"profile": record})
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 func upsertProfileRecord(ctx context.Context, userID string, profile map[string]interface{}) (models.ProfileRecord, error) {
@@ -48,11 +48,11 @@ func upsertProfileRecord(ctx context.Context, userID string, profile map[string]
 	}
 
 	const profileUpsertSQL = `
-INSERT INTO profiles (id, profile)
+INSERT INTO profiles (user_id, profile)
 VALUES ($1, $2)
-ON CONFLICT (id) DO UPDATE SET
+ON CONFLICT (user_id) DO UPDATE SET
 	profile = excluded.profile
-RETURNING id, profile;
+RETURNING user_id, profile;
 `
 
 	row := db.QueryRowContext(ctx, profileUpsertSQL, userID, profileJSON)
