@@ -15,12 +15,10 @@ func registerRoutes(app *fiber.App) {
 	app.Get("/signal", handleSignalDefinition)
 	v1Signal := app.Group("/v1/signal", SupabaseAuth())
 	v1Signal.Get("/today", handleTodaySignals)
-	v1Signal.Post("/action", handleSignalAction)
 	app.Post("/scrape", handleScrape)
 	v1User := app.Group("/v1/user", SupabaseAuth())
 	v1User.Get("/profile", handleProfileGet)
 	v1User.Post("/profile/update", handleProfileUpdate)
-	v1User.Post("/profile/websites", handleProfileWebsites)
 }
 
 func handleSignalDefinition(c *fiber.Ctx) error {
@@ -33,46 +31,6 @@ func handleSignalDefinition(c *fiber.Ctx) error {
 			"Processes can register handlers to perform custom logic when a signal arrives.",
 		},
 	})
-}
-
-func handleTodaySignals(c *fiber.Ctx) error {
-	list := listSignalsNewestFirst()
-	return c.JSON(fiber.Map{"today-signals": list})
-}
-
-func handleSignalAction(c *fiber.Ctx) error {
-	var req signalActionRequest
-	if err := c.BodyParser(&req); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid JSON payload")
-	}
-
-	req.SignalID = strings.TrimSpace(req.SignalID)
-	if req.SignalID == "" {
-		return fiber.NewError(fiber.StatusBadRequest, "signal_id is required")
-	}
-
-	snap, found := getSignalCopy(req.SignalID)
-	if !found {
-		return fiber.NewError(fiber.StatusNotFound, "signal not found")
-	}
-	if snap.ActionResult != nil {
-		return c.JSON(snap)
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
-	defer cancel()
-
-	result, err := fetchActionResult(ctx, snap)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadGateway, err.Error())
-	}
-
-	updated, err := setSignalActionResult(req.SignalID, result)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
-	}
-
-	return c.JSON(updated)
 }
 
 func handleScrape(c *fiber.Ctx) error {

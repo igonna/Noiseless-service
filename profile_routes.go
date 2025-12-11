@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -50,32 +49,6 @@ func handleProfileUpdate(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{"profile": record})
-}
-
-func handleProfileWebsites(c *fiber.Ctx) error {
-	if _, err := supabaseClaimsFromCtx(c); err != nil {
-		return err
-	}
-
-	var req profileWebsitesRequest
-	if err := c.BodyParser(&req); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid JSON payload")
-	}
-
-	profile := strings.TrimSpace(req.Profile)
-	if profile == "" {
-		return fiber.NewError(fiber.StatusBadRequest, "profile is required")
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
-	defer cancel()
-
-	result, err := fetchProfileWebsites(ctx, profile)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadGateway, err.Error())
-	}
-
-	return c.JSON(result)
 }
 
 func handleProfileGet(c *fiber.Ctx) error {
